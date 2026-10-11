@@ -106,7 +106,7 @@
         <div id="pane-op" class="section-pane active">
             <div class="card">
                 <h2>📝 รายงานเหตุการณ์ไฟดับ (แผนกปฏิบัติการ)</h2>
-                <form id="reportForm" onsubmit="handleReportSubmit(event)">
+                <form id="reportForm">
                     <div class="form-group">
                         <label>ลักษณะอาการไฟดับ / รายละเอียด</label>
                         <textarea id="symptom" required placeholder="เช่น หม้อแปลงระเบิด, สายไฟขาด"></textarea>
@@ -126,7 +126,7 @@
                         <label>ลงชื่อผู้กรอกข้อมูล (ปฏิบัติการ)</label>
                         <input type="text" id="reporterName" required placeholder="ระบุชื่อ-นามสกุล หรือชื่อผู้รายงาน">
                     </div>
-                    <button type="submit" class="action-btn" id="btnReport">ส่งรายงานเหตุการณ์</button>
+                    <button type="button" class="action-btn" id="btnReport" onclick="submitReport()">ส่งรายงานเหตุการณ์</button>
                 </form>
             </div>
         </div>
@@ -142,7 +142,7 @@
                     </select>
                 </div>
                 
-                <form id="updateForm" onsubmit="handleUpdateSubmit(event)">
+                <form id="updateForm">
                     <input type="hidden" id="rowIndex">
                     <div class="form-group">
                         <label>สถานะการดำเนินงาน</label>
@@ -164,7 +164,7 @@
                         <label>ลงชื่อผู้แก้ไขข้อมูล (มิเตอร์และหม้อแปลง)</label>
                         <input type="text" id="editorName" required placeholder="ระบุชื่อ-นามสกุล หรือผู้ปฏิบัติงานแก้ไข">
                     </div>
-                    <button type="submit" class="action-btn btn-warning" id="btnUpdate">บันทึกผลการแก้ไข</button>
+                    <button type="button" class="action-btn btn-warning" id="btnUpdate" onclick="submitUpdate()">บันทึกผลการแก้ไข</button>
                 </form>
             </div>
         </div>
@@ -244,11 +244,16 @@
         }
 
         function loadData() {
-            google.script.run.withSuccessHandler(data => {
-                allDataCache = data;
-                renderDashboard(data);
-                populateSelectDropdown(data);
-            }).getData();
+            google.script.run
+                .withSuccessHandler(data => {
+                    allDataCache = data || [];
+                    renderDashboard(allDataCache);
+                    populateSelectDropdown(allDataCache);
+                })
+                .withFailureHandler(err => {
+                    console.error("Load Error: ", err);
+                })
+                .getData();
         }
 
         function populateSelectDropdown(data) {
@@ -257,7 +262,7 @@
             data.forEach((row, index) => {
                 let opt = document.createElement('option');
                 opt.value = index + 2;
-                opt.innerText = `[${row[4] || 'รอดำเนินการ'}] ${row[1].substring(0, 35)}... (${row[0]})`;
+                opt.innerText = `[${row[4] || 'รอดำเนินการ'}] ${row[1] ? row[1].substring(0, 35) : ''}... (${row[0]})`;
                 select.appendChild(opt);
             });
         }
@@ -293,7 +298,7 @@
                 let reporter = row[8] || 'ไม่ระบุ';
                 let editor = row[9] || 'ยังไม่มีการแก้ไข';
 
-                if(timestamp && timestamp.startsWith(todayStr)) todayCount++;
+                if(timestamp && String(timestamp).startsWith(todayStr)) todayCount++;
 
                 let badgeClass = status === 'เสร็จสิ้น' ? 'badge-success' : (status === 'กำลังดำเนินการ' ? 'badge-process' : 'badge-pending');
 
@@ -309,8 +314,8 @@
                     }
                 }
 
-                let beforeImgs = imgBeforeLinks ? imgBeforeLinks.split(',').map(url => `<a href="${url.trim()}" target="_blank"><img src="${url.trim()}" class="img-preview"></a>`).join('') : 'ไม่มีรูป';
-                let afterImgs = imgAfterLinks ? imgAfterLinks.split(',').map(url => `<a href="${url.trim()}" target="_blank"><img src="${url.trim()}" class="img-preview"></a>`).join('') : 'ไม่มีรูป';
+                let beforeImgs = imgBeforeLinks ? String(imgBeforeLinks).split(',').map(url => `<a href="${url.trim()}" target="_blank"><img src="${url.trim()}" class="img-preview"></a>`).join('') : 'ไม่มีรูป';
+                let afterImgs = imgAfterLinks ? String(imgAfterLinks).split(',').map(url => `<a href="${url.trim()}" target="_blank"><img src="${url.trim()}" class="img-preview"></a>`).join('') : 'ไม่มีรูป';
 
                 historyHtml += `<div class="event-card">
                     <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -340,116 +345,129 @@
         function filterHistoryByDate() {
             let selectedDate = document.getElementById('filterDate').value;
             if(!selectedDate) { renderDashboard(allDataCache); return; }
-            let filtered = allDataCache.filter(row => row[0] && row[0].startsWith(selectedDate));
+            let filtered = allDataCache.filter(row => row[0] && String(row[0]).startsWith(selectedDate));
             renderDashboard(filtered);
         }
 
-        // ฟังก์ชันลบ (บังคับพิมพ์รหัสผ่าน แต่ไม่มีข้อความบอกรหัสบนเว็บ)
         function deleteRecord(rowNum) {
-            let pin = prompt("กรุณากรอกรหัสผ่านเพื่อยืนยันการลบข้อมูล:");
-            if(pin === null) return;
-            if(pin !== "14045") {
-                alert("รหัสผ่านไม่ถูกต้อง!");
-                return;
-            }
+            if(!confirm("ต้องการลบข้อมูลรายการนี้ใช่หรือไม่?")) return;
 
-            google.script.run.withSuccessHandler(() => {
-                alert("ลบข้อมูลสำเร็จ!");
-                loadData();
-            }).deleteRowData(rowNum);
+            google.script.run
+                .withSuccessHandler(() => {
+                    alert("ลบข้อมูลสำเร็จ!");
+                    loadData();
+                })
+                .withFailureHandler(err => alert("เกิดข้อผิดพลาด: " + err.message))
+                .deleteRowData(rowNum);
         }
 
-        // ฟังก์ชันแก้ไข (บังคับพิมพ์รหัสผ่าน แต่ไม่มีข้อความบอกรหัสบนเว็บ)
         function quickEdit(rowNum) {
-            let pin = prompt("กรุณากรอกรหัสผ่านเพื่อยืนยันการแก้ไขข้อมูล:");
-            if(pin === null) return;
-            if(pin !== "14045") {
-                alert("รหัสผ่านไม่ถูกต้อง!");
-                return;
-            }
-
             let matched = allDataCache[rowNum - 2];
             if(matched) {
                 switchTab('op');
-                document.getElementById('symptom').value = matched[1];
-                document.getElementById('coords').value = matched[3];
-                document.getElementById('reporterName').value = matched[8];
-                alert("โหลดข้อมูลลงในฟอร์มเรียบร้อย สามารถแก้ไขแล้วส่งรายงานเพื่อบันทึกทับได้เลยครับ");
+                document.getElementById('symptom').value = matched[1] || '';
+                document.getElementById('coords').value = matched[3] || '';
+                document.getElementById('reporterName').value = matched[8] || '';
+                alert("โหลดข้อมูลลงในฟอร์มเรียบร้อย สามารถแก้ไขแล้วส่งรายงานใหม่ได้เลยครับ");
             }
         }
 
-        function handleReportSubmit(e) {
-            e.preventDefault();
+        function submitReport() {
+            let symptom = document.getElementById('symptom').value;
+            let coords = document.getElementById('coords').value;
+            let reporter = document.getElementById('reporterName').value;
+
+            if(!symptom || !coords || !reporter) {
+                alert("กรุณากรอกข้อมูลให้ครบถ้วน (อาการ, พิกัด, ชื่อผู้กรอก)");
+                return;
+            }
+
             let btn = document.getElementById('btnReport');
-            btn.innerText = "กำลังอัปโหลดรูปภาพและบันทึก...";
+            btn.innerText = "กำลังบันทึกข้อมูล...";
             btn.disabled = true;
 
             let files = document.getElementById('fileBefore').files;
             readFilesAsBase64(files, fileDatas => {
                 let payload = {
-                    symptom: document.getElementById('symptom').value,
-                    coords: document.getElementById('coords').value,
-                    reporter: document.getElementById('reporterName').value,
+                    symptom: symptom,
+                    coords: coords,
+                    reporter: reporter,
                     images: fileDatas
                 };
 
-                google.script.run.withSuccessHandler(() => {
-                    alert("บันทึกรายงานสำเร็จ!");
-                    document.getElementById('reportForm').reset();
-                    btn.innerText = "ส่งรายงานเหตุการณ์";
-                    btn.disabled = false;
-                    loadData();
-                    switchTab('meter');
-                }).saveReportWithImages(payload);
+                google.script.run
+                    .withSuccessHandler(() => {
+                        alert("บันทึกรายงานสำเร็จ!");
+                        document.getElementById('reportForm').reset();
+                        btn.innerText = "ส่งรายงานเหตุการณ์";
+                        btn.disabled = false;
+                        loadData();
+                        switchTab('meter');
+                    })
+                    .withFailureHandler(err => {
+                        alert("เกิดข้อผิดพลาด: " + err.message);
+                        btn.innerText = "ส่งรายงานเหตุการณ์";
+                        btn.disabled = false;
+                    })
+                    .saveReportWithImages(payload);
             });
         }
 
-        function handleUpdateSubmit(e) {
-            e.preventDefault();
+        function submitUpdate() {
             let rowIdx = document.getElementById('rowIndex').value;
-            if(!rowIdx) { alert("กรุณาเลือกรายการที่ต้องการอัปเดต"); return; }
+            let status = document.getElementById('status').value;
+            let repairDetails = document.getElementById('repairDetails').value;
+            let editor = document.getElementById('editorName').value;
 
-            let pin = prompt("กรุณากรอกรหัสผ่านเพื่อยืนยันการบันทึกผล:");
-            if(pin === null) return;
-            if(pin !== "14045") {
-                alert("รหัสผ่านไม่ถูกต้อง!");
-                return;
-            }
+            if(!rowIdx) { alert("กรุณาเลือกรายการที่ต้องการอัปเดต"); return; }
+            if(!repairDetails || !editor) { alert("กรุณากรอกผลการปฏิบัติงานและชื่อผู้แก้ไข"); return; }
 
             let btn = document.getElementById('btnUpdate');
-            btn.innerText = "กำลังอัปโหลดรูปภาพ...";
+            btn.innerText = "กำลังบันทึก...";
             btn.disabled = true;
 
             let files = document.getElementById('fileAfter').files;
             readFilesAsBase64(files, fileDatas => {
                 let payload = {
                     rowIndex: rowIdx,
-                    status: document.getElementById('status').value,
-                    repairDetails: document.getElementById('repairDetails').value,
-                    editor: document.getElementById('editorName').value,
+                    status: status,
+                    repairDetails: repairDetails,
+                    editor: editor,
                     images: fileDatas
                 };
 
-                google.script.run.withSuccessHandler(() => {
-                    alert("อัปเดตผลการปฏิบัติงานสำเร็จ!");
-                    document.getElementById('updateForm').reset();
-                    document.getElementById('rowIndex').value = '';
-                    btn.innerText = "บันทึกผลการแก้ไข";
-                    btn.disabled = false;
-                    loadData();
-                    switchTab('op');
-                }).updateReportWithImages(payload);
+                google.script.run
+                    .withSuccessHandler(() => {
+                        alert("อัปเดตผลการปฏิบัติงานสำเร็จ!");
+                        document.getElementById('updateForm').reset();
+                        document.getElementById('rowIndex').value = '';
+                        btn.innerText = "บันทึกผลการแก้ไข";
+                        btn.disabled = false;
+                        loadData();
+                        switchTab('op');
+                    })
+                    .withFailureHandler(err => {
+                        alert("เกิดข้อผิดพลาด: " + err.message);
+                        btn.innerText = "บันทึกผลการแก้ไข";
+                        btn.disabled = false;
+                    })
+                    .updateReportWithImages(payload);
             });
         }
 
         function readFilesAsBase64(files, callback) {
-            if(files.length === 0) { callback([]); return; }
+            if(!files || files.length === 0) { callback([]); return; }
             let results = [];
             let completed = 0;
             Array.from(files).forEach((file, index) => {
                 let reader = new FileReader();
                 reader.onload = function(e) {
-                    results[index] = { name: file.name, mimeType: file.type, bytes: e.target.result.split(',')[1] };
+                    let base64Data = e.target.result.split(',')[1];
+                    results[index] = { name: file.name, mimeType: file.type, bytes: base64Data };
+                    completed++;
+                    if(completed === files.length) callback(results);
+                };
+                reader.onerror = function() {
                     completed++;
                     if(completed === files.length) callback(results);
                 };
