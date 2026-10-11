@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการเหตุการณ์ไฟดับ - PEA ขอนแก่น</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root {
+            --pea-purple: #5b21b6;
+            --pea-dark-purple: #4c1d95;
+            --pea-gold: #d97706;
+            --bg-color: #f3f4f6;
+        }
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 15px;
+            color: #1f2937;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header {
+            background: linear-gradient(135deg, var(--pea-purple), #7c3aed);
+            color: white; padding: 20px; border-radius: 12px; text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;
+        }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn {
+            flex: 1; padding: 12px; border: none; background: #e5e7eb; color: #4b5563;
+            font-family: 'Kanit', sans-serif; font-size: 1.05rem; font-weight: 500;
+            border-radius: 8px; cursor: pointer; transition: all 0.2s;
+        }
+        .tab-btn.active { background: var(--pea-purple); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .section-pane { display: none; }
+        .section-pane.active { display: block; }
+        .card {
+            background: white; padding: 20px; border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px;
+            border-top: 4px solid var(--pea-gold);
+        }
+        h2 { color: var(--pea-purple); margin-top: 0; font-size: 1.25rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
+        input, select, textarea {
+            width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;
+            font-family: 'Kanit', sans-serif; box-sizing: border-box;
+        }
+        textarea { resize: vertical; height: 80px; }
+        button.action-btn {
+            background-color: var(--pea-purple); color: white; border: none;
+            padding: 12px 20px; border-radius: 8px; cursor: pointer;
+            font-family: 'Kanit', sans-serif; font-size: 1rem; width: 100%; transition: background 0.2s;
+        }
+        button.action-btn:hover { background-color: var(--pea-dark-purple); }
+        .live-clock { font-size: 1rem; font-weight: 400; color: #fef3c7; margin-top: 5px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: #ede9fe; padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-box h3 { margin: 0; font-size: 1.8rem; color: var(--pea-purple); }
+        #map { height: 350px; border-radius: 8px; margin-top: 10px; }
+        .event-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; }
+        .badge-pending { background: #fee2e2; color: #b91c1c; }
+        .badge-process { background: #fef3c7; color: #b45309; }
+        .badge-success { background: #d1fae5; color: #047857; }
+        .btn-sm {
+            padding: 6px 12px; font-size: 0.9rem; border-radius: 6px; background: #0284c7;
+            color: white; border: none; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 5px;
+        }
+        .btn-sm:hover { background: #0369a1; }
+        .btn-danger { background: #dc2626; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: #d97706; }
+        .btn-warning:hover { background: #b45309; }
+        .img-preview { max-width: 90px; max-height: 90px; margin-right: 5px; border-radius: 4px; border: 1px solid #ccc; object-fit: cover; }
+        .sig-box { font-size: 0.9rem; color: #4b5563; margin-top: 5px; background: #f3f4f6; padding: 6px 10px; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>การไฟฟ้าส่วนภูมิภาคจังหวัดขอนแก่น (PEA KK)</h1>
+            <p>ระบบบริหารจัดการและประสานงานเหตุการณ์ไฟดับระหว่างแผนก</p>
+            <div id="liveClock" class="live-clock">กำลังโหลดเวลา...</div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('op')">⚡ ฝั่งปฏิบัติการและบำรุงรักษา</button>
+            <button class="tab-btn" onclick="switchTab('meter')">🔧 ฝั่งมิเตอร์และหม้อแปลง</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <p>เหตุการณ์ทั้งหมด</p>
+                <h3 id="totalCount">0</h3>
+            </div>
+            <div class="stat-box">
+                <p>เหตุการณ์วันนี้ (พ.ศ.)</p>
+                <h3 id="todayCount">0</h3>
+            </div>
+        </div>
+
+        <!-- 1. ฝั่งปฏิบัติการและบำรุงรักษา -->
+        <div id="pane-op" class="section-pane active">
+            <div class="card">
+                <h2>📝 รายงานเหตุการณ์ไฟดับ (แผนกปฏิบัติการ)</h2>
+                <form id="reportForm" onsubmit="handleReportSubmit(event)">
+                    <div class="form-group">
+                        <label>ลักษณะอาการไฟดับ / รายละเอียด</label>
+                        <textarea id="symptom" required placeholder="เช่น หม้อแปลงระเบิด, สายไฟขาด"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>อัปโหลดรูปภาพ (ก่อนซ่อม - เลือกได้หลายรูป)</label>
+                        <input type="file" id="fileBefore" multiple accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>ละติจูด, ลองจิจูด (พิกัดจุดเกิดเหตุ)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="coords" required placeholder="เช่น 16.4322, 102.8236" style="flex:1;">
+                            <button type="button" onclick="getCurrentLocation()" style="width: 140px; background: #059669; color:white; border:none; border-radius:8px; cursor:pointer;">📍 ดึงพิกัด</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>ลงชื่อผู้กรอกข้อมูล (ปฏิบัติการ)</label>
+                        <input type="text" id="reporterName" required placeholder="ระบุชื่อ-นามสกุล หรือชื่อผู้รายงาน">
+                    </div>
+                    <button type="submit" class="action-btn" id="btnReport">ส่งรายงานเหตุการณ์</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 2. ฝั่งมิเตอร์และหม้อแปลง -->
+        <div id="pane-meter" class="section-pane">
+            <div class="card">
+                <h2>🛠️ จัดการและบันทึกผลการแก้ไข (แผนกมิเตอร์และหม้อแปลง)</h2>
+                <div class="form-group">
+                    <label>เลือกรายการเหตุการณ์ที่ต้องการอัปเดต:</label>
+                    <select id="selectEventId" onchange="loadEventDetails()">
+                        <option value="">-- เลือกเหตุการณ์ --</option>
+                    </select>
+                </div>
+                
+                <form id="updateForm" onsubmit="handleUpdateSubmit(event)">
+                    <input type="hidden" id="rowIndex">
+                    <div class="form-group">
+                        <label>สถานะการดำเนินงาน</label>
+                        <select id="status" required>
+                            <option value="รอดำเนินการ">รอดำเนินการ</option>
+                            <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
+                            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ผลการปฏิบัติงาน / รายละเอียดการแก้ไข</label>
+                        <textarea id="repairDetails" required placeholder="ระบุการแก้ไข..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>อัปโหลดรูปภาพหลังซ่อม (เลือกได้หลายรูป)</label>
+                        <input type="file" id="fileAfter" multiple accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label>ลงชื่อผู้แก้ไขข้อมูล (มิเตอร์และหม้อแปลง)</label>
+                        <input type="text" id="editorName" required placeholder="ระบุชื่อ-นามสกุล หรือผู้ปฏิบัติงานแก้ไข">
+                    </div>
+                    <button type="submit" class="action-btn btn-warning" id="btnUpdate">บันทึกผลการแก้ไข</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- แผนที่ -->
+        <div class="card">
+            <h2>🗺️ แผนที่พิกัดจุดเกิดเหตุ (คลิกเพื่อนำทาง)</h2>
+            <div id="map"></div>
+        </div>
+
+        <!-- ประวัติย้อนหลัง -->
+        <div class="card">
+            <h2>📅 ประวัติเหตุการณ์และตัวกรองย้อนหลัง (พ.ศ.)</h2>
+            <div class="form-group">
+                <label>เลือกวันที่ดูย้อนหลัง:</label>
+                <input type="date" id="filterDate" onchange="filterHistoryByDate()">
+            </div>
+            <div id="historyContainer">
+                <p>กำลังโหลดข้อมูลประวัติ...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let markersLayer = L.layerGroup();
+        let allDataCache = [];
+
+        function formatThaiDateTime(dateString) {
+            if(!dateString) return '';
+            let d = new Date(dateString);
+            if(isNaN(d)) return dateString;
+            let year = d.getFullYear() + 543;
+            let month = String(d.getMonth() + 1).padStart(2, '0');
+            let day = String(d.getDate()).padStart(2, '0');
+            let time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            return `${day}/${month}/${year} ${time}`;
+        }
+
+        setInterval(() => {
+            const now = new Date();
+            let thaiYear = now.getFullYear() + 543;
+            let dateStr = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+            let timeStr = now.toLocaleTimeString('th-TH');
+            document.getElementById('liveClock').innerText = `🕒 ${dateStr.replace(now.getFullYear(), thaiYear)} เวลา ${timeStr}`;
+        }, 1000);
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.section-pane').forEach(p => p.classList.remove('active'));
+            if(tab === 'op') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('pane-op').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('pane-meter').classList.add('active');
+            }
+        }
+
+        function initMap() {
+            map = L.map('map').setView([16.4322, 102.8236], 12);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri'
+            }).addTo(map);
+            markersLayer.addTo(map);
+            loadData();
+        }
+
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    document.getElementById('coords').value = `${position.coords.latitude}, ${position.coords.longitude}`;
+                }, () => alert('ไม่สามารถดึงพิกัดได้'));
+            }
+        }
+
+        function loadData() {
+            google.script.run.withSuccessHandler(data => {
+                allDataCache = data;
+                renderDashboard(data);
+                populateSelectDropdown(data);
+            }).getData();
+        }
+
+        function populateSelectDropdown(data) {
+            let select = document.getElementById('selectEventId');
+            select.innerHTML = '<option value="">-- เลือกเหตุการณ์เพื่ออัปเดต --</option>';
+            data.forEach((row, index) => {
+                let opt = document.createElement('option');
+                opt.value = index + 2;
+                opt.innerText = `[${row[4] || 'รอดำเนินการ'}] ${row[1].substring(0, 35)}... (${row[0]})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function loadEventDetails() {
+            let rowIdx = document.getElementById('selectEventId').value;
+            if(!rowIdx) return;
+            let matched = allDataCache[rowIdx - 2];
+            if(matched) {
+                document.getElementById('rowIndex').value = rowIdx;
+                document.getElementById('status').value = matched[4] || 'รอดำเนินการ';
+                document.getElementById('repairDetails').value = matched[6] || '';
+                document.getElementById('editorName').value = matched[9] || '';
+            }
+        }
+
+        function renderDashboard(data) {
+            markersLayer.clearLayers();
+            let total = data.length;
+            let todayCount = 0;
+            let todayStr = new Date().toISOString().split('T')[0];
+            let historyHtml = '';
+
+            data.forEach((row, index) => {
+                let rowNum = index + 2;
+                let timestamp = row[0];
+                let symptom = row[1];
+                let imgBeforeLinks = row[2] || '';
+                let coordsStr = row[3];
+                let status = row[4] || 'รอดำเนินการ';
+                let repairDetails = row[6] || 'ยังไม่มีการบันทึกผล';
+                let imgAfterLinks = row[7] || '';
+                let reporter = row[8] || 'ไม่ระบุ';
+                let editor = row[9] || 'ยังไม่มีการแก้ไข';
+
+                if(timestamp && timestamp.startsWith(todayStr)) todayCount++;
+
+                let badgeClass = status === 'เสร็จสิ้น' ? 'badge-success' : (status === 'กำลังดำเนินการ' ? 'badge-process' : 'badge-pending');
+
+                if(coordsStr && coordsStr.includes(',')) {
+                    let parts = coordsStr.split(',');
+                    let lat = parseFloat(parts[0].trim());
+                    let lng = parseFloat(parts[1].trim());
+                    if(!isNaN(lat) && !isNaN(lng)) {
+                        let navUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+                        let marker = L.marker([lat, lng]);
+                        marker.bindPopup(`<b>อาการ:</b> ${symptom}<br><b>สถานะ:</b> ${status}<br><b>ผู้แจ้ง:</b> ${reporter}<br><a href="${navUrl}" target="_blank" class="btn-sm">📍 นำทาง</a>`);
+                        markersLayer.addLayer(marker);
+                    }
+                }
+
+                let beforeImgs = imgBeforeLinks ? imgBeforeLinks.split(',').map(url => `<a href="${url.trim()}" target="_blank"><img src="${url.trim()}" class="img-preview"></a>`).join('') : 'ไม่มีรูป';
+                let afterImgs = imgAfterLinks ? imgAfterLinks.split(',').map(url => `<a href="${url.trim()}" target="_blank"><img src="${url.trim()}" class="img-preview"></a>`).join('') : 'ไม่มีรูป';
+
+                historyHtml += `<div class="event-card">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span><b>วันที่/เวลา:</b> ${formatThaiDateTime(timestamp)}</span>
+                        <span class="badge ${badgeClass}">${status}</span>
+                    </div>
+                    <b>ลักษณะอาการ:</b> ${symptom}<br>
+                    <b>รูปก่อนซ่อม:</b><div style="margin:5px 0;">${beforeImgs}</div>
+                    <div class="sig-box">👤 <b>ผู้กรอกรายงาน (ปฏิบัติการ):</b> ${reporter}</div>
+                    <hr style="border:0; border-top:1px dashed #e5e7eb; margin:8px 0;">
+                    <b>ผลการแก้ไข:</b> ${repairDetails}<br>
+                    <b>รูปหลังซ่อม:</b><div style="margin:5px 0;">${afterImgs}</div>
+                    <div class="sig-box">🔧 <b>ผู้แก้ไข (มิเตอร์และหม้อแปลง):</b> ${editor}</div>
+                    <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+                        ${coordsStr ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${coordsStr}" target="_blank" class="btn-sm">📍 นำทางไปจุดเกิดเหตุ</a>` : ''}
+                        <button class="btn-sm btn-warning" onclick="quickEdit(${rowNum})">✏️ แก้ไข</button>
+                        <button class="btn-sm btn-danger" onclick="deleteRecord(${rowNum})">🗑️ ลบ</button>
+                    </div>
+                </div>`;
+            });
+
+            document.getElementById('totalCount').innerText = total;
+            document.getElementById('todayCount').innerText = todayCount;
+            document.getElementById('historyContainer').innerHTML = historyHtml || '<p>ไม่มีข้อมูลประวัติเหตุการณ์</p>';
+        }
+
+        function filterHistoryByDate() {
+            let selectedDate = document.getElementById('filterDate').value;
+            if(!selectedDate) { renderDashboard(allDataCache); return; }
+            let filtered = allDataCache.filter(row => row[0] && row[0].startsWith(selectedDate));
+            renderDashboard(filtered);
+        }
+
+        // ฟังก์ชันลบ (บังคับพิมพ์รหัสผ่าน แต่ไม่มีข้อความบอกรหัสบนเว็บ)
+        function deleteRecord(rowNum) {
+            let pin = prompt("กรุณากรอกรหัสผ่านเพื่อยืนยันการลบข้อมูล:");
+            if(pin === null) return;
+            if(pin !== "14045") {
+                alert("รหัสผ่านไม่ถูกต้อง!");
+                return;
+            }
+
+            google.script.run.withSuccessHandler(() => {
+                alert("ลบข้อมูลสำเร็จ!");
+                loadData();
+            }).deleteRowData(rowNum);
+        }
+
+        // ฟังก์ชันแก้ไข (บังคับพิมพ์รหัสผ่าน แต่ไม่มีข้อความบอกรหัสบนเว็บ)
+        function quickEdit(rowNum) {
+            let pin = prompt("กรุณากรอกรหัสผ่านเพื่อยืนยันการแก้ไขข้อมูล:");
+            if(pin === null) return;
+            if(pin !== "14045") {
+                alert("รหัสผ่านไม่ถูกต้อง!");
+                return;
+            }
+
+            let matched = allDataCache[rowNum - 2];
+            if(matched) {
+                switchTab('op');
+                document.getElementById('symptom').value = matched[1];
+                document.getElementById('coords').value = matched[3];
+                document.getElementById('reporterName').value = matched[8];
+                alert("โหลดข้อมูลลงในฟอร์มเรียบร้อย สามารถแก้ไขแล้วส่งรายงานเพื่อบันทึกทับได้เลยครับ");
+            }
+        }
+
+        function handleReportSubmit(e) {
+            e.preventDefault();
+            let btn = document.getElementById('btnReport');
+            btn.innerText = "กำลังอัปโหลดรูปภาพและบันทึก...";
+            btn.disabled = true;
+
+            let files = document.getElementById('fileBefore').files;
+            readFilesAsBase64(files, fileDatas => {
+                let payload = {
+                    symptom: document.getElementById('symptom').value,
+                    coords: document.getElementById('coords').value,
+                    reporter: document.getElementById('reporterName').value,
+                    images: fileDatas
+                };
+
+                google.script.run.withSuccessHandler(() => {
+                    alert("บันทึกรายงานสำเร็จ!");
+                    document.getElementById('reportForm').reset();
+                    btn.innerText = "ส่งรายงานเหตุการณ์";
+                    btn.disabled = false;
+                    loadData();
+                    switchTab('meter');
+                }).saveReportWithImages(payload);
+            });
+        }
+
+        function handleUpdateSubmit(e) {
+            e.preventDefault();
+            let rowIdx = document.getElementById('rowIndex').value;
+            if(!rowIdx) { alert("กรุณาเลือกรายการที่ต้องการอัปเดต"); return; }
+
+            let pin = prompt("กรุณากรอกรหัสผ่านเพื่อยืนยันการบันทึกผล:");
+            if(pin === null) return;
+            if(pin !== "14045") {
+                alert("รหัสผ่านไม่ถูกต้อง!");
+                return;
+            }
+
+            let btn = document.getElementById('btnUpdate');
+            btn.innerText = "กำลังอัปโหลดรูปภาพ...";
+            btn.disabled = true;
+
+            let files = document.getElementById('fileAfter').files;
+            readFilesAsBase64(files, fileDatas => {
+                let payload = {
+                    rowIndex: rowIdx,
+                    status: document.getElementById('status').value,
+                    repairDetails: document.getElementById('repairDetails').value,
+                    editor: document.getElementById('editorName').value,
+                    images: fileDatas
+                };
+
+                google.script.run.withSuccessHandler(() => {
+                    alert("อัปเดตผลการปฏิบัติงานสำเร็จ!");
+                    document.getElementById('updateForm').reset();
+                    document.getElementById('rowIndex').value = '';
+                    btn.innerText = "บันทึกผลการแก้ไข";
+                    btn.disabled = false;
+                    loadData();
+                    switchTab('op');
+                }).updateReportWithImages(payload);
+            });
+        }
+
+        function readFilesAsBase64(files, callback) {
+            if(files.length === 0) { callback([]); return; }
+            let results = [];
+            let completed = 0;
+            Array.from(files).forEach((file, index) => {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    results[index] = { name: file.name, mimeType: file.type, bytes: e.target.result.split(',')[1] };
+                    completed++;
+                    if(completed === files.length) callback(results);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
