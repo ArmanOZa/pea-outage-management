@@ -6,83 +6,77 @@
     <title>ระบบจัดการเหตุการณ์ไฟดับ - PEA ขอนแก่น</title>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
-        :root {
-            --pea-purple: #5b21b6;
-            --pea-dark-purple: #4c1d95;
-            --pea-gold: #d97706;
-            --bg-color: #f3f4f6;
-        }
-        body {
-            font-family: 'Kanit', sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 15px;
-            color: #1f2937;
-        }
+        :root { --pea-purple: #5b21b6; --pea-dark-purple: #4c1d95; --pea-gold: #d97706; --bg-color: #f3f4f6; }
+        body { font-family: 'Kanit', sans-serif; background-color: var(--bg-color); margin: 0; padding: 15px; color: #1f2937; }
         .container { max-width: 1000px; margin: 0 auto; }
-        header {
-            background: linear-gradient(135deg, var(--pea-purple), #7c3aed);
-            color: white; padding: 20px; border-radius: 12px; text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px;
-        }
+        header { background: linear-gradient(135deg, var(--pea-purple), #7c3aed); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .live-clock { font-size: 1rem; font-weight: 400; color: #fef3c7; margin-top: 5px; }
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn {
-            flex: 1; padding: 12px; border: none; background: #e5e7eb; color: #4b5563;
-            font-family: 'Kanit', sans-serif; font-size: 1.05rem; font-weight: 500;
-            border-radius: 8px; cursor: pointer; transition: all 0.2s;
-        }
-        .tab-btn.active { background: var(--pea-purple); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: #e5e7eb; color: #4b5563; font-family: 'Kanit', sans-serif; font-size: 1.05rem; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { background: var(--pea-purple); color: white; box-shadow: 0 2px 4px rgba(91,33,182,0.3); }
         .section-pane { display: none; }
         .section-pane.active { display: block; }
-        .card {
-            background: white; padding: 20px; border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px;
-            border-top: 4px solid var(--pea-gold);
-        }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: white; border-top: 4px solid var(--pea-gold); padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .stat-box h3 { margin: 5px 0 0 0; font-size: 1.8rem; color: var(--pea-purple); }
+        .card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 4px solid var(--pea-gold); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         h2 { color: var(--pea-purple); margin-top: 0; font-size: 1.25rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
-        input, select, textarea {
-            width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px;
-            font-family: 'Kanit', sans-serif; box-sizing: border-box;
-        }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-family: 'Kanit', sans-serif; box-sizing: border-box; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--pea-purple); box-shadow: 0 0 0 3px rgba(91,33,182,0.1); }
         textarea { resize: vertical; height: 80px; }
-        button.action-btn {
-            background-color: var(--pea-purple); color: white; border: none;
-            padding: 12px 20px; border-radius: 8px; cursor: pointer;
-            font-family: 'Kanit', sans-serif; font-size: 1rem; width: 100%; transition: background 0.2s;
-        }
+        button.action-btn { background-color: var(--pea-purple); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-family: 'Kanit', sans-serif; font-size: 1rem; width: 100%; transition: background 0.2s; }
         button.action-btn:hover { background-color: var(--pea-dark-purple); }
-        .live-clock { font-size: 1rem; font-weight: 400; color: #fef3c7; margin-top: 5px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-box { background: #ede9fe; padding: 15px; border-radius: 8px; text-align: center; }
-        .stat-box h3 { margin: 0; font-size: 1.8rem; color: var(--pea-purple); }
         #map { height: 350px; border-radius: 8px; margin-top: 10px; }
         .event-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
         .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: 500; }
         .badge-pending { background: #fee2e2; color: #b91c1c; }
         .badge-process { background: #fef3c7; color: #b45309; }
         .badge-success { background: #d1fae5; color: #047857; }
-        .btn-sm {
-            padding: 6px 12px; font-size: 0.9rem; border-radius: 6px; background: #0284c7;
-            color: white; border: none; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 5px;
-        }
-        .btn-sm:hover { background: #0369a1; }
+        .btn-sm { padding: 6px 12px; font-size: 0.9rem; border-radius: 6px; background: #0284c7; color: white; border: none; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 5px; }
         .btn-danger { background: #dc2626; }
-        .btn-danger:hover { background: #b91c1c; }
-        .btn-warning { background: #d97706; }
-        .btn-warning:hover { background: #b45309; }
+        .btn-warning { background: var(--pea-gold); color: white; }
         .img-preview { max-width: 90px; max-height: 90px; margin-right: 5px; border-radius: 4px; border: 1px solid #ccc; object-fit: cover; }
         .sig-box { font-size: 0.9rem; color: #4b5563; margin-top: 5px; background: #f3f4f6; padding: 6px 10px; border-radius: 6px; }
+        
+        /* PEA Custom Modal / Popup Styles */
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; color: white; justify-content: center; align-items: center; font-size: 1.5rem; font-family: 'Kanit', sans-serif; backdrop-filter: blur(2px); }
+        .pea-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(76, 29, 149, 0.4); z-index: 10000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .pea-modal { background: white; width: 90%; max-width: 400px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden; border-top: 6px solid var(--pea-gold); animation: modalIn 0.3s ease; }
+        @keyframes modalIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .pea-modal-header { background: var(--pea-purple); color: white; padding: 15px 20px; font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
+        .pea-modal-body { padding: 20px; }
+        .pea-modal-footer { padding: 15px 20px; background: #f9fafb; display: flex; gap: 10px; justify-content: flex-end; }
+        .pea-btn-primary { background: var(--pea-purple); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Kanit', sans-serif; }
+        .pea-btn-secondary { background: #e5e7eb; color: #374151; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-family: 'Kanit', sans-serif; }
     </style>
 </head>
 <body>
+    <div id="loading" class="loading-overlay">⚡ กำลังบีบอัดรูปและส่งข้อมูล PEA...</div>
+
+    <!-- PEA Custom Prompt Modal -->
+    <div id="peaModal" class="pea-modal-overlay">
+        <div class="pea-modal">
+            <div class="pea-modal-header">
+                <span>⚡ การไฟฟ้าส่วนภูมิภาค (PEA)</span>
+            </div>
+            <div class="pea-modal-body">
+                <p id="peaModalText" style="margin-top:0; font-weight: 500;"></p>
+                <input type="password" id="peaModalInput" placeholder="กรอกรหัสผ่าน 5 หลัก..." style="display:none; margin-top:10px;">
+            </div>
+            <div class="pea-modal-footer">
+                <button id="peaModalCancel" class="pea-btn-secondary" onclick="closePeaModal(false)">ยกเลิก</button>
+                <button id="peaModalOk" class="pea-btn-primary" onclick="closePeaModal(true)">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
-            <h1>การไฟฟ้าส่วนภูมิภาคจังหวัดขอนแก่น (PEA KK)</h1>
-            <p>ระบบบริหารจัดการและประสานงานเหตุการณ์ไฟดับระหว่างแผนก</p>
+            <h1 style="margin:0 0 5px 0; font-size: 1.5rem;">การไฟฟ้าส่วนภูมิภาคจังหวัดขอนแก่น (PEA KK)</h1>
+            <p style="margin:0; font-weight:300;">ระบบบริหารจัดการและประสานงานเหตุการณ์ไฟดับระหว่างแผนก</p>
             <div id="liveClock" class="live-clock">กำลังโหลดเวลา...</div>
         </header>
 
@@ -93,89 +87,53 @@
 
         <div class="stats-grid">
             <div class="stat-box">
-                <p>เหตุการณ์ทั้งหมด</p>
+                <p style="margin: 0; color: #4b5563; font-size: 0.9rem;">เหตุการณ์ทั้งหมด</p>
                 <h3 id="totalCount">0</h3>
             </div>
             <div class="stat-box">
-                <p>เหตุการณ์วันนี้ (พ.ศ.)</p>
+                <p style="margin: 0; color: #4b5563; font-size: 0.9rem;">เหตุการณ์วันนี้ (พ.ศ.)</p>
                 <h3 id="todayCount">0</h3>
             </div>
         </div>
-
-        <!-- 1. ฝั่งปฏิบัติการและบำรุงรักษา -->
+        
+        <!-- ฝั่งปฏิบัติการ -->
         <div id="pane-op" class="section-pane active">
             <div class="card">
-                <h2>📝 รายงานเหตุการณ์ไฟดับ (แผนกปฏิบัติการ)</h2>
+                <h2>📝 รายงานเหตุการณ์ไฟดับ</h2>
                 <form id="reportForm">
-                    <div class="form-group">
-                        <label>ลักษณะอาการไฟดับ / รายละเอียด</label>
-                        <textarea id="symptom" required placeholder="เช่น หม้อแปลงระเบิด, สายไฟขาด"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>อัปโหลดรูปภาพ (ก่อนซ่อม - เลือกได้หลายรูป)</label>
-                        <input type="file" id="fileBefore" multiple accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label>ละติจูด, ลองจิจูด (พิกัดจุดเกิดเหตุ)</label>
+                    <div class="form-group"><label>อาการไฟดับ</label><textarea id="symptom" required placeholder="ระบุอาการไฟดับ..."></textarea></div>
+                    <div class="form-group"><label>รูปก่อนซ่อม (เลือกได้หลายรูป ระบบจะย่อขนาดอัตโนมัติ)</label><input type="file" id="fileBefore" multiple accept="image/*"></div>
+                    <div class="form-group"><label>พิกัด (ละติจูด, ลองจิจูด)</label>
                         <div style="display: flex; gap: 10px;">
                             <input type="text" id="coords" required placeholder="เช่น 16.4322, 102.8236" style="flex:1;">
                             <button type="button" onclick="getCurrentLocation()" style="width: 140px; background: #059669; color:white; border:none; border-radius:8px; cursor:pointer;">📍 ดึงพิกัด</button>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>ลงชื่อผู้กรอกข้อมูล (ปฏิบัติการ)</label>
-                        <input type="text" id="reporterName" required placeholder="ระบุชื่อ-นามสกุล หรือชื่อผู้รายงาน">
-                    </div>
-                    <button type="button" class="action-btn" id="btnReport" onclick="submitReport()">ส่งรายงานเหตุการณ์</button>
+                    <div class="form-group"><label>ผู้กรอกข้อมูล</label><input type="text" id="reporterName" required placeholder="ชื่อ-นามสกุล"></div>
+                    <button type="button" class="action-btn" onclick="confirmSubmitReport()">ส่งรายงาน</button>
                 </form>
             </div>
         </div>
 
-        <!-- 2. ฝั่งมิเตอร์และหม้อแปลง -->
+        <!-- ฝั่งมิเตอร์ -->
         <div id="pane-meter" class="section-pane">
             <div class="card">
-                <h2>🛠️ จัดการและบันทึกผลการแก้ไข (แผนกมิเตอร์และหม้อแปลง)</h2>
-                <div class="form-group">
-                    <label>เลือกรายการเหตุการณ์ที่ต้องการอัปเดต:</label>
-                    <select id="selectEventId" onchange="loadEventDetails()">
-                        <option value="">-- เลือกเหตุการณ์ --</option>
-                    </select>
-                </div>
-                
+                <h2>🛠️ บันทึกผลการแก้ไข</h2>
+                <div class="form-group"><label>เลือกเหตุการณ์</label><select id="selectEventId" onchange="loadEventDetails()"><option value="">-- เลือกเหตุการณ์ --</option></select></div>
                 <form id="updateForm">
                     <input type="hidden" id="rowIndex">
-                    <div class="form-group">
-                        <label>สถานะการดำเนินงาน</label>
-                        <select id="status" required>
-                            <option value="รอดำเนินการ">รอดำเนินการ</option>
-                            <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
-                            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>ผลการปฏิบัติงาน / รายละเอียดการแก้ไข</label>
-                        <textarea id="repairDetails" required placeholder="ระบุการแก้ไข..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>อัปโหลดรูปภาพหลังซ่อม (เลือกได้หลายรูป)</label>
-                        <input type="file" id="fileAfter" multiple accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label>ลงชื่อผู้แก้ไขข้อมูล (มิเตอร์และหม้อแปลง)</label>
-                        <input type="text" id="editorName" required placeholder="ระบุชื่อ-นามสกุล หรือผู้ปฏิบัติงานแก้ไข">
-                    </div>
-                    <button type="button" class="action-btn btn-warning" id="btnUpdate" onclick="submitUpdate()">บันทึกผลการแก้ไข</button>
+                    <div class="form-group"><label>สถานะ</label><select id="status"><option value="รอดำเนินการ">รอดำเนินการ</option><option value="กำลังดำเนินการ">กำลังดำเนินการ</option><option value="เสร็จสิ้น">เสร็จสิ้น</option></select></div>
+                    <div class="form-group"><label>ผลการปฏิบัติงาน</label><textarea id="repairDetails" required placeholder="รายละเอียดการแก้ไข..."></textarea></div>
+                    <div class="form-group"><label>รูปหลังซ่อม (เลือกได้หลายรูป ระบบจะย่อขนาดอัตโนมัติ)</label><input type="file" id="fileAfter" multiple accept="image/*"></div>
+                    <div class="form-group"><label>ผู้แก้ไขข้อมูล</label><input type="text" id="editorName" required placeholder="ชื่อผู้ปฏิบัติงานแก้ไข"></div>
+                    <button type="button" class="action-btn btn-warning" onclick="confirmSubmitUpdate()">บันทึกผล</button>
                 </form>
             </div>
         </div>
 
-        <!-- แผนที่ -->
-        <div class="card">
-            <h2>🗺️ แผนที่พิกัดจุดเกิดเหตุ (คลิกเพื่อนำทาง)</h2>
-            <div id="map"></div>
-        </div>
-
-        <!-- ประวัติย้อนหลัง -->
+        <div class="card"><h2>🗺️ แผนที่พิกัด</h2><div id="map"></div></div>
+        
+        <!-- ประวัติและตัวกรองปฏิทินย้อนหลัง -->
         <div class="card">
             <h2>📅 ประวัติเหตุการณ์และตัวกรองย้อนหลัง (พ.ศ.)</h2>
             <div class="form-group">
@@ -190,9 +148,97 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map;
-        let markersLayer = L.layerGroup();
-        let allDataCache = [];
+        const API_URL = "https://script.google.com/macros/s/AKfycbyAb2IZ8moDVv0rR886Cr8BYsPlQAzhU831l8fnpiW4p2TZNQdPMGW5F0GGhYe7DW1AJA/exec";
+
+        let map, markersLayer = L.layerGroup(), allDataCache = [];
+        let peaModalCallback = null;
+
+        function showLoading(show) { document.getElementById('loading').style.display = show ? 'flex' : 'none'; }
+
+        function showPeaModal(message, isPassword, callback) {
+            document.getElementById('peaModalText').innerText = message;
+            let inputEl = document.getElementById('peaModalInput');
+            inputEl.value = '';
+            if (isPassword) {
+                inputEl.style.display = 'block';
+                inputEl.focus();
+            } else {
+                inputEl.style.display = 'none';
+            }
+            document.getElementById('peaModal').style.display = 'flex';
+            peaModalCallback = callback;
+        }
+
+        function closePeaModal(isConfirm) {
+            document.getElementById('peaModal').style.display = 'none';
+            let inputVal = document.getElementById('peaModalInput').value;
+            if (peaModalCallback) {
+                peaModalCallback(isConfirm, inputVal);
+                peaModalCallback = null;
+            }
+        }
+
+        // นาฬิกาเรียลไทม์ (พ.ศ.)
+        setInterval(() => {
+            const now = new Date();
+            let thaiYear = now.getFullYear() + 543;
+            let dateStr = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+            let timeStr = now.toLocaleTimeString('th-TH');
+            let clockEl = document.getElementById('liveClock');
+            if(clockEl) {
+                clockEl.innerText = `🕒 ${dateStr.replace(now.getFullYear(), thaiYear)} เวลา ${timeStr}`;
+            }
+        }, 1000);
+
+        function switchTab(t) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.section-pane').forEach(p => p.classList.remove('active'));
+            if(t==='op'){document.querySelectorAll('.tab-btn')[0].classList.add('active');document.getElementById('pane-op').classList.add('active');}
+            else{document.querySelectorAll('.tab-btn')[1].classList.add('active');document.getElementById('pane-meter').classList.add('active');}
+        }
+
+        function initMap() {
+            map = L.map('map').setView([16.4322, 102.8236], 12);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(map);
+            markersLayer.addTo(map);
+            loadData();
+        }
+
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(p => {
+                    document.getElementById('coords').value = `${p.coords.latitude}, ${p.coords.longitude}`;
+                }, () => showPeaModal("ไม่สามารถดึงพิกัดอัตโนมัติได้", false, () => {}));
+            }
+        }
+
+        function loadData() {
+            showLoading(true);
+            fetch(`${API_URL}?action=getData`)
+                .then(res => res.json())
+                .then(data => {
+                    allDataCache = data || [];
+                    renderDashboard(allDataCache);
+                    populateSelectDropdown(allDataCache);
+                    showLoading(false);
+                })
+                .catch(err => {
+                    console.error(err);
+                    showLoading(false);
+                    showPeaModal("ไม่สามารถเชื่อมต่อฐานข้อมูลได้", false, () => {});
+                });
+        }
+
+        function populateSelectDropdown(d) {
+            let s = document.getElementById('selectEventId'); s.innerHTML = '<option value="">-- เลือกเหตุการณ์ --</option>';
+            d.forEach((r, i) => { let o = document.createElement('option'); o.value = i+2; o.innerText = `[${r[4]||'รอดำเนินการ'}] ${r[1]?r[1].substring(0,30):''}`; s.appendChild(o); });
+        }
+
+        function loadEventDetails() {
+            let idx = document.getElementById('selectEventId').value; if(!idx) return;
+            let m = allDataCache[idx-2];
+            if(m) { document.getElementById('rowIndex').value = idx; document.getElementById('status').value = m[4]||'รอดำเนินการ'; document.getElementById('repairDetails').value = m[6]||''; document.getElementById('editorName').value = m[9]||''; }
+        }
 
         function formatThaiDateTime(dateString) {
             if(!dateString) return '';
@@ -205,98 +251,16 @@
             return `${day}/${month}/${year} ${time}`;
         }
 
-        setInterval(() => {
-            const now = new Date();
-            let thaiYear = now.getFullYear() + 543;
-            let dateStr = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-            let timeStr = now.toLocaleTimeString('th-TH');
-            document.getElementById('liveClock').innerText = `🕒 ${dateStr.replace(now.getFullYear(), thaiYear)} เวลา ${timeStr}`;
-        }, 1000);
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.section-pane').forEach(p => p.classList.remove('active'));
-            if(tab === 'op') {
-                document.querySelectorAll('.tab-btn')[0].classList.add('active');
-                document.getElementById('pane-op').classList.add('active');
-            } else {
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                document.getElementById('pane-meter').classList.add('active');
-            }
-        }
-
-        function initMap() {
-            map = L.map('map').setView([16.4322, 102.8236], 12);
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles &copy; Esri'
-            }).addTo(map);
-            markersLayer.addTo(map);
-            loadData();
-        }
-
-        function getCurrentLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    document.getElementById('coords').value = `${position.coords.latitude}, ${position.coords.longitude}`;
-                }, () => alert('ไม่สามารถดึงพิกัดได้'));
-            }
-        }
-
-        function loadData() {
-            google.script.run
-                .withSuccessHandler(data => {
-                    allDataCache = data || [];
-                    renderDashboard(allDataCache);
-                    populateSelectDropdown(allDataCache);
-                })
-                .withFailureHandler(err => {
-                    console.error("Load Error: ", err);
-                })
-                .getData();
-        }
-
-        function populateSelectDropdown(data) {
-            let select = document.getElementById('selectEventId');
-            select.innerHTML = '<option value="">-- เลือกเหตุการณ์เพื่ออัปเดต --</option>';
-            data.forEach((row, index) => {
-                let opt = document.createElement('option');
-                opt.value = index + 2;
-                opt.innerText = `[${row[4] || 'รอดำเนินการ'}] ${row[1] ? row[1].substring(0, 35) : ''}... (${row[0]})`;
-                select.appendChild(opt);
-            });
-        }
-
-        function loadEventDetails() {
-            let rowIdx = document.getElementById('selectEventId').value;
-            if(!rowIdx) return;
-            let matched = allDataCache[rowIdx - 2];
-            if(matched) {
-                document.getElementById('rowIndex').value = rowIdx;
-                document.getElementById('status').value = matched[4] || 'รอดำเนินการ';
-                document.getElementById('repairDetails').value = matched[6] || '';
-                document.getElementById('editorName').value = matched[9] || '';
-            }
-        }
-
-        function renderDashboard(data) {
+        function renderDashboard(d) {
             markersLayer.clearLayers();
-            let total = data.length;
+            let total = allDataCache.length;
             let todayCount = 0;
             let todayStr = new Date().toISOString().split('T')[0];
             let historyHtml = '';
 
-            data.forEach((row, index) => {
-                let rowNum = index + 2;
-                let timestamp = row[0];
-                let symptom = row[1];
-                let imgBeforeLinks = row[2] || '';
-                let coordsStr = row[3];
-                let status = row[4] || 'รอดำเนินการ';
-                let repairDetails = row[6] || 'ยังไม่มีการบันทึกผล';
-                let imgAfterLinks = row[7] || '';
-                let reporter = row[8] || 'ไม่ระบุ';
-                let editor = row[9] || 'ยังไม่มีการแก้ไข';
+            d.forEach((r, i) => {
+                let rowNum = allDataCache.indexOf(r) + 2;
+                let timestamp = r[0], sym = r[1], imgBeforeLinks = r[2]||'', coordsStr = r[3], status = r[4]||'รอดำเนินการ', repairDetails = r[6]||'ยังไม่มีการบันทึกผล', imgAfterLinks = r[7]||'', reporter = r[8]||'ไม่ระบุ', editor = r[9]||'ยังไม่มีการแก้ไข';
 
                 if(timestamp && String(timestamp).startsWith(todayStr)) todayCount++;
 
@@ -304,12 +268,11 @@
 
                 if(coordsStr && coordsStr.includes(',')) {
                     let parts = coordsStr.split(',');
-                    let lat = parseFloat(parts[0].trim());
-                    let lng = parseFloat(parts[1].trim());
+                    let lat = parseFloat(parts[0].trim()), lng = parseFloat(parts[1].trim());
                     if(!isNaN(lat) && !isNaN(lng)) {
                         let navUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
                         let marker = L.marker([lat, lng]);
-                        marker.bindPopup(`<b>อาการ:</b> ${symptom}<br><b>สถานะ:</b> ${status}<br><b>ผู้แจ้ง:</b> ${reporter}<br><a href="${navUrl}" target="_blank" class="btn-sm">📍 นำทาง</a>`);
+                        marker.bindPopup(`<b>อาการ:</b> ${sym}<br><b>สถานะ:</b> ${status}<br><b>ผู้แจ้ง:</b> ${reporter}<br><a href="${navUrl}" target="_blank" class="btn-sm">📍 นำทาง</a>`);
                         markersLayer.addLayer(marker);
                     }
                 }
@@ -322,7 +285,7 @@
                         <span><b>วันที่/เวลา:</b> ${formatThaiDateTime(timestamp)}</span>
                         <span class="badge ${badgeClass}">${status}</span>
                     </div>
-                    <b>ลักษณะอาการ:</b> ${symptom}<br>
+                    <b>ลักษณะอาการ:</b> ${sym}<br>
                     <b>รูปก่อนซ่อม:</b><div style="margin:5px 0;">${beforeImgs}</div>
                     <div class="sig-box">👤 <b>ผู้กรอกรายงาน (ปฏิบัติการ):</b> ${reporter}</div>
                     <hr style="border:0; border-top:1px dashed #e5e7eb; margin:8px 0;">
@@ -350,128 +313,136 @@
         }
 
         function deleteRecord(rowNum) {
-            if(!confirm("ต้องการลบข้อมูลรายการนี้ใช่หรือไม่?")) return;
+            showPeaModal("กรุณากรอกรหัสผ่านเพื่อยืนยันการลบข้อมูล:", true, (isConfirm, pin) => {
+                if(!isConfirm) return;
+                if(pin !== "14045") { showPeaModal("รหัสผ่านไม่ถูกต้อง!", false, ()=>{}); return; }
 
-            google.script.run
-                .withSuccessHandler(() => {
-                    alert("ลบข้อมูลสำเร็จ!");
-                    loadData();
-                })
-                .withFailureHandler(err => alert("เกิดข้อผิดพลาด: " + err.message))
-                .deleteRowData(rowNum);
+                showLoading(true);
+                fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteRow', rowNum: rowNum }) })
+                    .then(res => res.json()).then(() => { showLoading(false); showPeaModal("ลบข้อมูลสำเร็จ!", false, ()=>loadData()); }).catch(err => { showLoading(false); showPeaModal("เกิดข้อผิดพลาด", false, ()=>{}); });
+            });
         }
 
         function quickEdit(rowNum) {
-            let matched = allDataCache[rowNum - 2];
-            if(matched) {
-                switchTab('op');
-                document.getElementById('symptom').value = matched[1] || '';
-                document.getElementById('coords').value = matched[3] || '';
-                document.getElementById('reporterName').value = matched[8] || '';
-                alert("โหลดข้อมูลลงในฟอร์มเรียบร้อย สามารถแก้ไขแล้วส่งรายงานใหม่ได้เลยครับ");
-            }
+            showPeaModal("กรุณากรอกรหัสผ่านเพื่อยืนยันการแก้ไขข้อมูล:", true, (isConfirm, pin) => {
+                if(!isConfirm) return;
+                if(pin !== "14045") { showPeaModal("รหัสผ่านไม่ถูกต้อง!", false, ()=>{}); return; }
+
+                let matched = allDataCache[rowNum - 2];
+                if(matched) {
+                    switchTab('op');
+                    document.getElementById('symptom').value = matched[1] || '';
+                    document.getElementById('coords').value = matched[3] || '';
+                    document.getElementById('reporterName').value = matched[8] || '';
+                    showPeaModal("โหลดข้อมูลลงในฟอร์มเรียบร้อย สามารถแก้ไขแล้วส่งรายงานใหม่ได้เลย", false, ()=>{});
+                }
+            });
         }
 
-        function submitReport() {
+        // ฟังก์ชันบีบอัดและย่อรูปภาพอัตโนมัติก่อนส่ง
+        function compressAndConvertImage(file, callback) {
+            let reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = e => {
+                let img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    let canvas = document.createElement('canvas');
+                    let MAX_WIDTH = 1200;
+                    let MAX_HEIGHT = 1200;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    let ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // บีบอัดเป็น JPEG คุณภาพ 75% เพื่อลดขนาดไฟล์
+                    let dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+                    let base64Bytes = dataUrl.split(',')[1];
+                    callback({ name: file.name.replace(/\.[^/.]+$/, "") + ".jpg", mimeType: "image/jpeg", bytes: base64Bytes });
+                };
+            };
+        }
+
+        function readAllFilesCompressed(files, callback) {
+            if(!files || files.length === 0) { callback([]); return; }
+            let results = [], completed = 0;
+            Array.from(files).forEach((file, index) => {
+                compressAndConvertImage(file, compressedObj => {
+                    results[index] = compressedObj;
+                    if(++completed === files.length) callback(results);
+                });
+            });
+        }
+
+        function confirmSubmitReport() {
             let symptom = document.getElementById('symptom').value;
             let coords = document.getElementById('coords').value;
             let reporter = document.getElementById('reporterName').value;
+            if(!symptom || !coords || !reporter) { showPeaModal("กรุณากรอกข้อมูลให้ครบถ้วนก่อนส่งรายงาน", false, ()=>{}); return; }
 
-            if(!symptom || !coords || !reporter) {
-                alert("กรุณากรอกข้อมูลให้ครบถ้วน (อาการ, พิกัด, ชื่อผู้กรอก)");
-                return;
-            }
+            showPeaModal("กรุณากรอกรหัสผ่านเพื่อยืนยันการส่งรายงาน:", true, (isConfirm, pin) => {
+                if(!isConfirm) return;
+                if(pin !== "14045") { showPeaModal("รหัสผ่านไม่ถูกต้อง!", false, ()=>{}); return; }
 
-            let btn = document.getElementById('btnReport');
-            btn.innerText = "กำลังบันทึกข้อมูล...";
-            btn.disabled = true;
-
-            let files = document.getElementById('fileBefore').files;
-            readFilesAsBase64(files, fileDatas => {
-                let payload = {
-                    symptom: symptom,
-                    coords: coords,
-                    reporter: reporter,
-                    images: fileDatas
-                };
-
-                google.script.run
-                    .withSuccessHandler(() => {
-                        alert("บันทึกรายงานสำเร็จ!");
-                        document.getElementById('reportForm').reset();
-                        btn.innerText = "ส่งรายงานเหตุการณ์";
-                        btn.disabled = false;
-                        loadData();
-                        switchTab('meter');
-                    })
-                    .withFailureHandler(err => {
-                        alert("เกิดข้อผิดพลาด: " + err.message);
-                        btn.innerText = "ส่งรายงานเหตุการณ์";
-                        btn.disabled = false;
-                    })
-                    .saveReportWithImages(payload);
+                showLoading(true);
+                readAllFilesCompressed(document.getElementById('fileBefore').files, images => {
+                    let payload = { action: 'saveReport', symptom, coords, reporter, images };
+                    fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
+                        .then(res => res.json())
+                        .then(() => { 
+                            showLoading(false);
+                            showPeaModal("บันทึกรายงานสำเร็จ!", false, () => {
+                                document.getElementById('reportForm').reset(); 
+                                loadData(); 
+                                switchTab('meter');
+                            });
+                        })
+                        .catch(err => { showLoading(false); showPeaModal("เกิดข้อผิดพลาดในการบันทึก", false, ()=>{}); });
+                });
             });
         }
 
-        function submitUpdate() {
-            let rowIdx = document.getElementById('rowIndex').value;
+        function confirmSubmitUpdate() {
+            let rowIndex = document.getElementById('rowIndex').value;
             let status = document.getElementById('status').value;
             let repairDetails = document.getElementById('repairDetails').value;
             let editor = document.getElementById('editorName').value;
+            if(!rowIndex || !repairDetails || !editor) { showPeaModal("กรุณากรอกข้อมูลผลการแก้ไขให้ครบถ้วน", false, ()=>{}); return; }
 
-            if(!rowIdx) { alert("กรุณาเลือกรายการที่ต้องการอัปเดต"); return; }
-            if(!repairDetails || !editor) { alert("กรุณากรอกผลการปฏิบัติงานและชื่อผู้แก้ไข"); return; }
+            showPeaModal("กรุณากรอกรหัสผ่านเพื่อยืนยันการบันทึกผลการปฏิบัติงาน:", true, (isConfirm, pin) => {
+                if(!isConfirm) return;
+                if(pin !== "14045") { showPeaModal("รหัสผ่านไม่ถูกต้อง!", false, ()=>{}); return; }
 
-            let btn = document.getElementById('btnUpdate');
-            btn.innerText = "กำลังบันทึก...";
-            btn.disabled = true;
-
-            let files = document.getElementById('fileAfter').files;
-            readFilesAsBase64(files, fileDatas => {
-                let payload = {
-                    rowIndex: rowIdx,
-                    status: status,
-                    repairDetails: repairDetails,
-                    editor: editor,
-                    images: fileDatas
-                };
-
-                google.script.run
-                    .withSuccessHandler(() => {
-                        alert("อัปเดตผลการปฏิบัติงานสำเร็จ!");
-                        document.getElementById('updateForm').reset();
-                        document.getElementById('rowIndex').value = '';
-                        btn.innerText = "บันทึกผลการแก้ไข";
-                        btn.disabled = false;
-                        loadData();
-                        switchTab('op');
-                    })
-                    .withFailureHandler(err => {
-                        alert("เกิดข้อผิดพลาด: " + err.message);
-                        btn.innerText = "บันทึกผลการแก้ไข";
-                        btn.disabled = false;
-                    })
-                    .updateReportWithImages(payload);
-            });
-        }
-
-        function readFilesAsBase64(files, callback) {
-            if(!files || files.length === 0) { callback([]); return; }
-            let results = [];
-            let completed = 0;
-            Array.from(files).forEach((file, index) => {
-                let reader = new FileReader();
-                reader.onload = function(e) {
-                    let base64Data = e.target.result.split(',')[1];
-                    results[index] = { name: file.name, mimeType: file.type, bytes: base64Data };
-                    completed++;
-                    if(completed === files.length) callback(results);
-                };
-                reader.onerror = function() {
-                    completed++;
-                    if(completed === files.length) callback(results);
-                };
-                reader.readAsDataURL(file);
+                showLoading(true);
+                readAllFilesCompressed(document.getElementById('fileAfter').files, images => {
+                    let payload = { action: 'updateReport', rowIndex, status, repairDetails, editor, images };
+                    fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) })
+                        .then(res => res.json())
+                        .then(() => { 
+                            showLoading(false);
+                            showPeaModal("อัปเดตผลการปฏิบัติงานสำเร็จ!", false, () => {
+                                document.getElementById('updateForm').reset(); 
+                                loadData(); 
+                                switchTab('op');
+                            });
+                        })
+                        .catch(err => { showLoading(false); showPeaModal("เกิดข้อผิดพลาด", false, ()=>{}); });
+                });
             });
         }
 
